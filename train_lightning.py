@@ -1,5 +1,25 @@
 from dataset import hierarchical_dataset, AlignCollate, Batch_Balanced_Dataset
 from model_lightning import *
+def savethongtincan(opt,model):
+    params_num = []
+    for p in filter(lambda p: p.requires_grad, model.parameters()):
+        params_num.append(np.prod(p.size()))
+    file_txt_save=f'./saved_models/{opt.exp_name}/opt.txt'
+    if os.path.exists(file_txt_save):
+        os.remove(file_txt_save)
+    with open(file_txt_save, 'a') as opt_file:
+        opt_log = '------------ Options -------------\n'
+        args = vars(opt)
+        for k, v in args.items():
+            opt_log += f'{str(k)}: {str(v)}\n'
+        opt_log += '---------------------------------------\n'
+        # print(opt_log)
+        opt_file.write(opt_log)
+        total_params = int(sum(params_num))
+        total_params = f'Trainable network params num : {total_params:,}'
+        print(total_params)
+        opt_file.write(total_params)
+
 def train(opt):
     """ dataset preparation  """
     "lọc dữ liệu"
@@ -55,8 +75,10 @@ def train(opt):
         benchmark=True,               # tối ưu conv cuDNN
         deterministic=False,          # tăng tốc (có thể thay đổi kết quả)
     )
+    
     # val_result = trainer.validate(model=model, dataloaders=val_loader)
     # print("Validation result:", val_result)
+    savethongtincan(opt,model)
     trainer.fit(model, train_loader, val_loader)
     
     # Chạy validate trước khi train
@@ -97,11 +119,23 @@ if __name__ == '__main__':
 
 
 """
-CUDA_VISIBLE_DEVICES=0,1 python train_lightning.py --exp_name "HD_08_ResNet_32_480" --train_data /home/rsc-100367/Desktop/AnhTH/OCR/ocr_vitstr_transformer_AnhTH/data_train/SGC/class08/db_train --valid_data /home/rsc-100367/Desktop/AnhTH/OCR/ocr_vitstr_transformer_AnhTH/data_train/SGC/class08/db_val --select_data / --batch_ratio 1 --Transformation TPS --FeatureExtraction ResNet --SequenceModeling BiLSTM --Prediction Attn --imgH 32 --imgW 480 --manualSeed=$RANDOM --batch_size 16 --num_iter 5000000 --valInterval 1000 --batch_max_length=100 --character " $+-./0123456789=ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz" --rgb --lr 0.0001 --issel_aug --pattern --warp --geometry --weather --noise --blur --process --scheduler --intact_prob 0.5 --isrand_aug --augs_num 3 --augs_mag 3 --issemantic_aug --isrotation_aug --isscatter_aug --islearning_aug --fast_acc --infer_model diem.pth --quantized --static --camera --saved_model HD_08_ResNet_32_480.pth
+CUDA_VISIBLE_DEVICES=0,1 python train_lightning.py --exp_name "HD_08_ResNet_32_480" --train_data /home/rsc-100367/Desktop/AnhTH/OCR/ocr_vitstr_transformer_AnhTH/data_train/SGC/class08/db_train --valid_data /home/rsc-100367/Desktop/AnhTH/OCR/ocr_vitstr_transformer_AnhTH/data_train/SGC/class08/db_val --select_data / --batch_ratio 1 --Transformation TPS --FeatureExtraction ResNet --SequenceModeling BiLSTM --Prediction Attn --imgH 32 --imgW 480 --manualSeed=$RANDOM --batch_size 16 --num_iter 5000000 --valInterval 1000 --batch_max_length=100 --character " $+-./0123456789=ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz" --rgb --lr 0.01 --issel_aug --pattern --warp --geometry --weather --noise --blur --process --scheduler --intact_prob 0.5 --isrand_aug --augs_num 3 --augs_mag 3 --issemantic_aug --isrotation_aug --isscatter_aug --islearning_aug --fast_acc --infer_model diem.pth --quantized --static --camera --saved_model HD_08_ResNet_32_480_1.pth
 
 CUDA_VISIBLE_DEVICES=0,1 python train_lightning.py --exp_name "HD_08_ResNet_64_512" --train_data /home/rsc-100367/Desktop/AnhTH/OCR/ocr_vitstr_transformer_AnhTH/data_train/SGC/class08/db_train --valid_data /home/rsc-100367/Desktop/AnhTH/OCR/ocr_vitstr_transformer_AnhTH/data_train/SGC/class08/db_val --select_data / --batch_ratio 1 --Transformation TPS --FeatureExtraction ResNet --SequenceModeling BiLSTM --Prediction Attn --imgH 64 --imgW 512 --manualSeed=$RANDOM --batch_size 32 --num_iter 5000000 --valInterval 1000 --batch_max_length=100 --character " $+-./0123456789=ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz|" --rgb --lr 0.0001 --issel_aug --pattern --warp --geometry --weather --noise --blur --process --scheduler --intact_prob 0.5 --isrand_aug --augs_num 3 --augs_mag 3 --issemantic_aug --isrotation_aug --isscatter_aug --islearning_aug --fast_acc --infer_model diem.pth --quantized --static --camera --saved_model HD_08_ResNet_64_512.pth
 
 CUDA_VISIBLE_DEVICES=0 python train_lightning.py --exp_name "HD_08_ResNet_32_320" --train_data /home/rsc-100367/Desktop/AnhTH/OCR/ocr_vitstr_transformer_AnhTH/data_train/SGC/class08/db_train --valid_data /home/rsc-100367/Desktop/AnhTH/OCR/ocr_vitstr_transformer_AnhTH/data_train/SGC/class08/db_val --select_data / --batch_ratio 1 --Transformation TPS --FeatureExtraction ResNet --SequenceModeling BiLSTM --Prediction Attn --imgH 32 --imgW 320 --manualSeed=$RANDOM --num_iter 5000000 --valInterval 1000 --batch_max_length=100 --character " $+-./0123456789=ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz|" --rgb --lr 0.0001 --issel_aug --pattern --warp --geometry --weather --noise --blur --process --scheduler --intact_prob 0.5 --isrand_aug --augs_num 3 --augs_mag 3 --issemantic_aug --isrotation_aug --isscatter_aug --islearning_aug --fast_acc --infer_model diem.pth --quantized --static --camera --saved_model HD_08_ResNet_32_320.pth --batch_size 128 --use_jit
+
+CUDA_VISIBLE_DEVICES=0,1 python train_lightning.py --exp_name "HD_08_swin_base_patch4_window7_224_32_480" --train_data /home/rsc-100367/Desktop/AnhTH/OCR/ocr_vitstr_transformer_AnhTH/data_train/SGC/class08/db_train --valid_data /home/rsc-100367/Desktop/AnhTH/OCR/ocr_vitstr_transformer_AnhTH/data_train/SGC/class08/db_val --select_data / --batch_ratio 1 --Transformation TPS --FeatureExtraction swin_base_patch4_window7_224 --SequenceModeling BiLSTM --Prediction Attn --imgH 32 --imgW 480 --manualSeed=$RANDOM --num_iter 5000000 --valInterval 1000 --batch_max_length=100 --character " $+-./0123456789=ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz" --rgb --lr 0.01 --issel_aug --pattern --warp --geometry --weather --noise --blur --process --scheduler --intact_prob 0.5 --isrand_aug --augs_num 3 --augs_mag 3 --issemantic_aug --isrotation_aug --isscatter_aug --islearning_aug --fast_acc --infer_model diem.pth --quantized --static --camera --saved_model HD_08_swin_base_patch4_window7_224_32_480.pth --batch_size 16 --output_channel 1024
+
+CUDA_VISIBLE_DEVICES=0,1 python train_lightning.py --exp_name "HD_08_swin_large_patch4_window12_384_32_480" --train_data /home/rsc-100367/Desktop/AnhTH/OCR/ocr_vitstr_transformer_AnhTH/data_train/SGC/class08/db_train --valid_data /home/rsc-100367/Desktop/AnhTH/OCR/ocr_vitstr_transformer_AnhTH/data_train/SGC/class08/db_val --select_data / --batch_ratio 1 --Transformation TPS --FeatureExtraction swin_large_patch4_window12_384 --SequenceModeling BiLSTM --Prediction Attn --imgH 32 --imgW 480 --manualSeed=$RANDOM --num_iter 5000000 --valInterval 1000 --batch_max_length=100 --character " $+-./0123456789=ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz" --rgb --lr 0.01 --issel_aug --pattern --warp --geometry --weather --noise --blur --process --scheduler --intact_prob 0.5 --isrand_aug --augs_num 3 --augs_mag 3 --issemantic_aug --isrotation_aug --isscatter_aug --islearning_aug --fast_acc --infer_model diem.pth --quantized --static --camera  --batch_size 16 --output_channel 1000 --saved_model HD_08_swin_large_patch4_window12_384_32_480.pth
+
+
+
+CUDA_VISIBLE_DEVICES=0,1 python train_lightning.py --exp_name "HD_08_VGG_32_480" --train_data /home/rsc-100367/Desktop/AnhTH/OCR/ocr_vitstr_transformer_AnhTH/data_train/SGC/class08/db_train --valid_data /home/rsc-100367/Desktop/AnhTH/OCR/ocr_vitstr_transformer_AnhTH/data_train/SGC/class08/db_val --select_data / --batch_ratio 1 --Transformation TPS --FeatureExtraction VGG --SequenceModeling BiLSTM --Prediction Attn --imgH 32 --imgW 480 --manualSeed=$RANDOM --num_iter 5000000 --valInterval 1000 --batch_max_length=100 --character " $+-./0123456789=ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz" --rgb --issel_aug --pattern --warp --geometry --weather --noise --blur --process --scheduler --intact_prob 0.5 --isrand_aug --augs_num 3 --augs_mag 3 --issemantic_aug --isrotation_aug --isscatter_aug --islearning_aug --fast_acc --infer_model diem.pth --quantized --static --camera --saved_model HD_08_VGG_32_480.pth --batch_size 32 --lr 0.01
+
+CUDA_VISIBLE_DEVICES=0,1 python train_lightning.py --exp_name "HD_08_VGG_32_1000" --train_data /home/rsc-100367/Desktop/AnhTH/OCR/ocr_vitstr_transformer_AnhTH/data_train/SGC/class08/db_train --valid_data /home/rsc-100367/Desktop/AnhTH/OCR/ocr_vitstr_transformer_AnhTH/data_train/SGC/class08/db_val --select_data / --batch_ratio 1 --Transformation TPS --FeatureExtraction VGG --SequenceModeling BiLSTM --Prediction Attn --imgH 32 --imgW 1000 --manualSeed=$RANDOM --num_iter 5000000 --valInterval 1000 --batch_max_length=100 --character " $+-./0123456789=ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz" --rgb --issel_aug --pattern --warp --geometry --weather --noise --blur --process --scheduler --intact_prob 0.5 --isrand_aug --augs_num 3 --augs_mag 3 --issemantic_aug --isrotation_aug --isscatter_aug --islearning_aug --fast_acc --infer_model diem.pth --quantized --static --camera --batch_size 128 --lr 1
+
+
 
 trainer = pl.Trainer(
     strategy=DDPStrategy(find_unused_parameters=False),  # TRUE nếu model có nhánh phụ không dùng

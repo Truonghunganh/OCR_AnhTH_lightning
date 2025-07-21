@@ -73,6 +73,7 @@ class Model_Lightning(pl.LightningModule):
         #         self.model.load_state_dict(torch.load(opt.saved_model, map_location=device))
             # self.model = torch.nn.DataParallel(self.model).to(device)
         # self.model=torch.jit.trace(self.model)
+       
         self.model = self.model.to(device)
         # self.model=torch.jit.load("jit_traced_model.pth", map_location=device)
         if opt.saved_model != '':
@@ -127,6 +128,7 @@ class Model_Lightning(pl.LightningModule):
         acc = self.val_correct / self.val_total
         if self.acc_max<acc and self.val_total>10000:
             self.acc_max=acc
+            print("✅ New best model saved!")
             os.makedirs(f'./saved_models/{self.opt.exp_name}',exist_ok=True)
             torch.save(
                     self.model.state_dict(), f'./saved_models/{self.opt.exp_name}/best_accuracy.pth')
@@ -279,15 +281,17 @@ class Model_Lightning(pl.LightningModule):
         #     self.val_total=self.trainer.callback_metrics["val_total"]
 
         self.log("val_loss", cost, prog_bar=True, sync_dist=True)
-        self.log(f"val_acc:{self.val_correct}/{self.val_total}", self.val_correct / self.val_total, prog_bar=True, sync_dist=True)
+        self.log(f"val_acc:{self.val_correct}/{self.val_total}=",self.val_correct / self.val_total, prog_bar=True, sync_dist=True)
         return cost
     def configure_optimizers(self):
+        print('configure_optimizersconfigure_optimizersconfigure_optimizersconfigure_optimizersconfigure_optimizers')
         # return torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
-        # return torch.optim.Adadelta(self.model.parameters(), lr=self.opt.lr, rho=0.95, eps=1e-8)
+        return torch.optim.Adadelta(self.model.parameters(), lr=self.opt.lr, rho=0.95, eps=1e-8)
         # return torch.optim.Adadelta(self.model.parameters(), lr=1e-5)
-        return torch.optim.Adadelta(self.model.parameters(), lr=1e-8, rho=0.95, eps=1e-8)
-        # optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-8)
-        # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
+        # return torch.optim.Adadelta(self.model.parameters(), lr=1e-8, rho=0.95, eps=1e-8)
+        # optimizer = torch.optim.Adadelta(self.model.parameters(), lr=self.opt.lr, rho=0.95, eps=1e-8)
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3)
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
         ''''''
         # optimizer = torch.optim.AdamW(self.model.parameters(), lr=1e-8, weight_decay=1e-4)
         # def lr_lambda(current_step):
