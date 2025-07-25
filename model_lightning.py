@@ -88,6 +88,10 @@ class Model_Lightning(pl.LightningModule):
                 self.model.load_state_dict(new_state_dict)
             else:
                 self.model.load_state_dict(state_dict)
+
+                # state_dict = state_dict['state_dict']  # lấy phần model
+                # new_state_dict = {k.replace('model.', ''): v for k, v in state_dict.items()}  # nếu bị prefix 'model.'
+                # self.model.load_state_dict(new_state_dict)  
         if self.opt.use_jit:
             print("self.opt.use_jit:",self.opt.use_jit,'kkkkkkkkkkkkkkkkkkkkkkkkkkk')
             dummy_image = torch.randn(opt.batch_size, 3, 32, 480).to(device)  # ví dụ ảnh OCR grayscale
@@ -126,6 +130,7 @@ class Model_Lightning(pl.LightningModule):
             self.val_correct , self.val_total=self.trainer.callback_metrics["val_correct"] , self.trainer.callback_metrics["val_total"]
         print('oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo')
         acc = self.val_correct / self.val_total
+        # torch.save(self.model.state_dict(), f'HD_08_swin_large_patch4_window12_384_32_480.pth')
         if self.acc_max<acc and self.val_total>10000:
             self.acc_max=acc
             print("✅ New best model saved!")
@@ -285,8 +290,15 @@ class Model_Lightning(pl.LightningModule):
         return cost
     def configure_optimizers(self):
         print('configure_optimizersconfigure_optimizersconfigure_optimizersconfigure_optimizersconfigure_optimizers')
-        # return torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
+        # from ranger import Ranger
+
+        # return Ranger(self.model.parameters(), lr=1e-3, weight_decay=1e-4)
+
+        return  torch.optim.Adam(self.model.parameters(), lr=1e-4)
+
         return torch.optim.Adadelta(self.model.parameters(), lr=self.opt.lr, rho=0.95, eps=1e-8)
+        # return torch.optim.Adadelta(self.model.parameters(), lr=1, rho=0.9, eps=1e-6)# train từ đầu
+        
         # return torch.optim.Adadelta(self.model.parameters(), lr=1e-5)
         # return torch.optim.Adadelta(self.model.parameters(), lr=1e-8, rho=0.95, eps=1e-8)
         # optimizer = torch.optim.Adadelta(self.model.parameters(), lr=self.opt.lr, rho=0.95, eps=1e-8)
@@ -349,3 +361,27 @@ class JitModel(Model):
         prediction = self.vitstr(input, seqlen=seqlen)
         return prediction
 
+'''
+swin_large_patch4_window12_384:
+    visual_feature[0]:
+        visual_feature.squeeze(0): torch.Size([8, 120, 192])
+        visual_feature.squeeze(1): torch.Size([1, 8, 120, 192])
+        visual_feature.squeeze(2): torch.Size([1, 8, 120, 192])
+        visual_feature.squeeze(3): torch.Size([1, 8, 120, 192])
+    visual_feature[1]:
+        visual_feature.squeeze(0): torch.Size([4, 60, 384])
+        visual_feature.squeeze(1): torch.Size([1, 4, 60, 384])
+        visual_feature.squeeze(2): torch.Size([1, 4, 60, 384])
+        visual_feature.squeeze(3): torch.Size([1, 4, 60, 384])
+    visual_feature[2]:
+        visual_feature.squeeze(0): torch.Size([2, 30, 768])
+        visual_feature.squeeze(1): torch.Size([1, 2, 30, 768])
+        visual_feature.squeeze(2): torch.Size([1, 2, 30, 768])
+        visual_feature.squeeze(3): torch.Size([1, 2, 30, 768])
+    visual_feature[3]:
+        visual_feature.squeeze(0): torch.Size([1, 15, 1536])
+        visual_feature.squeeze(1): torch.Size([1, 15, 1536])
+        visual_feature.squeeze(2): torch.Size([1, 1, 15, 1536])
+        visual_feature.squeeze(3): torch.Size([1, 1, 15, 1536])
+
+'''

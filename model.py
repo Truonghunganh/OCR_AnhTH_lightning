@@ -122,7 +122,9 @@ class Model(nn.Module):
         elif opt.FeatureExtraction == 'swin_large_patch4_window12_384':
             # self.FeatureExtraction = timm.create_model("swin_large_patch4_window12_384",pretrained=True,img_size=(int(opt.imgH),int(opt.imgW)),num_classes=0)
             # self.FeatureExtraction = timm.create_model("swin_large_patch4_window12_384",pretrained=True,img_size=(int(opt.imgH),int(opt.imgW)),features_only=True)
-            self.FeatureExtraction = timm.create_model("swin_large_patch4_window12_384",pretrained=True,img_size=(int(opt.imgH),int(opt.imgW)))
+            self.FeatureExtraction = timm.create_model("swin_large_patch4_window12_384",pretrained=True,features_only=True,img_size=(int(opt.imgH),int(opt.imgW)))
+            self.reduce_dim = nn.Linear(1536, 480)
+
           
         elif opt.FeatureExtraction == 'maxvit_base_224':
             self.FeatureExtraction = timm.create_model("maxvit_base_224",pretrained=True,img_size=(int(opt.imgH),int(opt.imgW)))
@@ -230,45 +232,29 @@ class Model(nn.Module):
         if str(self.opt.FeatureExtraction).startswith('efficientnet_b'):
             visual_feature = self.FeatureExtraction.extract_features(input)
             visual_feature = self.ConvReduce(visual_feature)
-        elif self.opt.FeatureExtraction in ['swin_large_patch4_window12_384',"swin_base_patch4_window7_224"]:
-            visual_feature = self.FeatureExtraction(input)
-            visual_feature = visual_feature.unsqueeze(-1).unsqueeze(-1)  # [B, C] -> [B, C, 1, 1]
+            visual_feature = self.AdaptiveAvgPool(visual_feature.permute(0, 3, 1, 2))  # [b, c, h, w] -> [b, w, c, h]
+            visual_feature = visual_feature.squeeze(3)
+        elif self.opt.FeatureExtraction in ['swin_large_patch4_window12_384', 'swin_base_patch4_window7_224']:
+            visual_feature = self.FeatureExtraction(input)  # output [B, L, C]
+            if isinstance(visual_feature, (list, tuple)):
+                visual_feature = visual_feature[-1]  # phòng khi model trả ra nhiều output
+            # print(len(visual_feature))
+            # for i in range(10):
+            #    print(f"visual_feature.squeeze({i}):",visual_feature.squeeze(i).shape)  
+            # sys.exit() 
+            visual_feature = visual_feature.squeeze(1)
+            
+            # visual_feature = self.reduce_dim(visual_feature)  # [B, 15, 480]
+            # visual_feature = visual_feature.permute(0, 2, 1)  # [B, 480, 15]
+            # visual_feature = F.interpolate(visual_feature, size=32, mode='linear', align_corners=True)  # [B, 480, 32]
+            # visual_feature = visual_feature.permute(0, 2, 1)  # [B, 32, 480]
 
-            # if self.opt.output_channel==512:
-            #     self.reduce_channels = torch.nn.Conv2d(in_channels=1000, out_channels=512, kernel_size=1).to(visual_feature.device)
-            #     visual_feature = self.reduce_channels(visual_feature)  
-                # visual_feature = visual_feature.expand(-1, 512, -1, -1) 
-            # visual_feature = visual_feature[-1]
-            # visual_feature = visual_feature.expand(-1, 512, -1, -1)  
-        
-        # elif self.opt.FeatureExtraction in ['swin_large_patch4_window12_384',"vit_base_patch16_224"]:
-            # visual_feature = self.FeatureExtraction(input)
-            # if visual_feature.dim() == 2:
-            #     visual_feature = visual_feature.unsqueeze(2).unsqueeze(3)  
-            # # visual_feature = visual_feature.view(visual_feature.shape[0], visual_feature.shape[1], int(self.opt.imgH),int(self.opt.imgW))
-            # # visual_feature = visual_feature.view(1, 512, 3, 129)
-            # # '1, 512, 3, 129'
-            # if self.opt.FeatureExtraction=="vit_base_patch16_224":
-            #     self.conv_reduce = nn.Conv2d(in_channels=1000, out_channels=512, kernel_size=1, stride=1, bias=False).to(visual_feature.device)  
-            # else:      
-            #     self.conv_reduce = nn.Conv2d(in_channels=1536, out_channels=512, kernel_size=1, stride=1, bias=False).to(visual_feature.device)
-            # visual_feature = self.conv_reduce(visual_feature)    
+
         else:
-           visual_feature = self.FeatureExtraction(input)
-        # visual_feature = visual_feature.expand(-1, 512, -1, -1)  
-        # print(visual_feature.shape)
-        # B, C = visual_feature.shape
-        # H, W = int(math.sqrt(C)), int(math.sqrt(C))  # Tạo H, W sao cho H*W = C (nếu có thể)
-        # visual_feature = visual_feature.view(B, 1, 1, C)  # Thêm kênh channel = 1
-        # B, C, H, W = visual_feature.shape  # Kiểm tra kích thước thực tế
-        # linear_layer = nn.Linear(in_features=C * H * W, out_features=512)  # Cần khớp với input thực tế
-        # visual_feature = visual_feature.view(B, -1).to(visual_feature.device)  # Chuyển thành [B, C*H*W]
-        # visual_feature = linear_layer(visual_feature)  # Đưa qua Linear
-
-        
-        visual_feature = self.AdaptiveAvgPool(visual_feature.permute(0, 3, 1, 2))  # [b, c, h, w] -> [b, w, c, h]
-        visual_feature = visual_feature.squeeze(3)
-        # print(visual_feature.shape)
+            visual_feature = self.FeatureExtraction(input)
+            visual_feature = self.AdaptiveAvgPool(visual_feature.permute(0, 3, 1, 2))  # [b, c, h, w] -> [b, w, c, h]
+            visual_feature = visual_feature.squeeze(3)
+        # print("visual_feature :",visual_feature.shape)
         
         """ Sequence modeling stage """
         if self.stages['Seq'] == 'BiLSTM':
